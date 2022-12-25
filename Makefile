@@ -3,3 +3,9 @@ install:
 
 pre-commit-check:
 	pre-commit run --all-files
+
+run-tests:
+	pytest
+
+test-coverage:
+	pytest --cov=rates --cov-report xml
