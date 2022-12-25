@@ -1,3 +1,5 @@
+.DEFAULT_GOAL := run
+
 install:
 	pip install -r requirements.txt
 
@@ -23,3 +25,16 @@ stop:
 	docker compose stop
 
 setup-database: build-database up-database run-migrations
+
+serve:
+	uvicorn rates.main:app --reload
+
+build: build-database build-api
+
+build-api:
+	docker compose build api
+
+up:
+	docker compose up -d
+
+run: build up run-migrations

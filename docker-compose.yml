@@ -10,3 +10,16 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_PASSWORD: ratestask
+
+  api:
+    container_name: "rates-api"
+    build:
+      context: .
+      dockerfile: deployment/api/Dockerfile
+    depends_on:
+      - database
+    ports:
+      - "8000:80"
+    environment:
+      DB_HOST: database
+      DB_PASSWORD: ratestask
