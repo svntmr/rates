@@ -1,0 +1,56 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+default_language_version:
+  python: python3.10
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-ast
+      - id: fix-byte-order-marker
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-executables-have-shebangs
+      - id: check-json
+      - id: check-yaml
+      - id: debug-statements
+      - id: mixed-line-ending
+      - id: check-added-large-files
+        args: ["--maxkb=2000"]
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        # Exclude Markdown files because `  ` at the end of a line is a valid
+        # syntax to notify a line break.
+        # See https://github.com/pre-commit/pre-commit-hooks/issues/57
+        exclude_types: [markdown]
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v2.7.1
+    hooks:
+      - id: prettier
+  - repo: https://github.com/psf/black
+    rev: 22.12.0
+    hooks:
+      - id: black
+  - repo: https://github.com/pycqa/isort
+    rev: 5.11.4
+    hooks:
+      - id: isort
+        name: isort (python)
+        args: ["--profile", "black", "--filter-files"]
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.991
+    hooks:
+      - id: mypy
+        # To avoid dependencies redefinition.
+        language: system
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+  - repo: https://github.com/jorisroovers/gitlint
+    rev: v0.18.0
+    hooks:
+      - id: gitlint
+        stages: [commit-msg]
+        args: [--contrib=CT1, --msg-filename]
