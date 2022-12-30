@@ -17,14 +17,11 @@ def get_average_prices(request: RatesRequest) -> AveragePrices:
     :return: list of average prices for each day in date range
     :rtype: AveragePrices
     """
-    date_from = request.date_from
-    date_to = request.date_to
-
     engine = get_engine()
     with engine.connect() as connection:
         prices = get_prices_for_request(connection, request)
 
-    return process_prices(prices, date_from, date_to)
+    return process_prices(prices)
 
 
 def get_prices_for_request(connection: Connection, request: RatesRequest) -> List[Row]:
@@ -38,19 +35,32 @@ def get_prices_for_request(connection: Connection, request: RatesRequest) -> Lis
     :return: list of rows with day, average prices and prices amount
     :rtype: List[Row]
     """
-    # option for refactoring: https://stackoverflow.com/a/62414835
-    # will allow to get rid of `create_period_dates` and simplify `process_prices`
     prices_per_day = connection.execute(
         text(
-            "SELECT day, avg(price) AS avg_price, count(price) AS prices_count "
-            "FROM prices "
-            "JOIN (SELECT code FROM codes WHERE key = :origin) origin_codes "
-            "ON prices.orig_code = origin_codes.code "
-            "JOIN (SELECT code FROM codes WHERE key = :destination) "
-            "destination_codes ON prices.dest_code = destination_codes.code "
-            "WHERE day BETWEEN :date_from and :date_to "
-            "GROUP BY day "
-            "ORDER BY day "
+            """
+            WITH prices_per_day as (
+                SELECT day, avg(price) AS avg_price, count(price) AS prices_count
+                FROM prices
+                JOIN (SELECT code FROM codes WHERE key = :origin) origin_codes
+                    ON orig_code = origin_codes.code
+                JOIN (SELECT code FROM codes WHERE key = :destination) destination_codes
+                    ON prices.dest_code = destination_codes.code
+                WHERE day BETWEEN :date_from AND :date_to
+                GROUP BY day
+            ),
+            missing_dates AS (
+                SELECT day, 0 AS avg_price, 0 AS prices_count
+                FROM (
+                    SELECT generate_series(date :date_from, :date_to, '1 day')::date
+                    AS day
+                ) date_range
+                WHERE day NOT IN (SELECT day FROM prices_per_day)
+            )
+            SELECT day, avg_price, prices_count FROM prices_per_day
+            UNION
+            SELECT day, avg_price, prices_count FROM missing_dates
+            ORDER BY day
+            """
         ),
         {
             "origin": request.origin,
@@ -85,30 +95,8 @@ def get_day_average_price(
     )
 
 
-def create_period_dates(date_from: str, date_to: str) -> List[str]:
-    """
-    Creates dates for given time period
-
-    :param date_from: start of time period
-    :type date_from: str
-    :param date_to: end of time period
-    :type date_to: str
-    :return: list of dates for given time period
-    :rtype: List[str]
-    """
-    period_start = datetime.datetime.strptime(date_from, "%Y-%m-%d").date()
-    period_end = datetime.datetime.strptime(date_to, "%Y-%m-%d").date()
-    period_dates = [
-        str(period_start + datetime.timedelta(days=x))
-        for x in range((period_end - period_start).days + 1)
-    ]
-    return period_dates
-
-
 def process_prices(
     prices: List[Row] | List[Tuple[datetime.date, Decimal, int]],
-    date_from: str,
-    date_to: str,
 ) -> AveragePrices:
     """
     Processes prices and returns list of average prices for each day in
@@ -116,33 +104,17 @@ def process_prices(
 
     :param prices: list of prices for given time period
     :type prices: List[Row] | List[Tuple[datetime.date, Decimal, int]]
-    :param date_from: start of time period
-    :type date_from: str
-    :param date_to: end of time period
-    :type date_to: str
     :return: list of average prices for each day in given time period
     :rtype: AveragePrices
     """
-    period_dates = create_period_dates(date_from, date_to)
-
-    found_prices_per_day = {
-        str(price[0]): AveragePrice(
-            day=str(price[0]),
-            average_price=get_day_average_price(price),
-        )
-        for price in prices
-    }
-
     result = []
-    for date in period_dates:
-        if str(date) in found_prices_per_day:
-            result.append(found_prices_per_day[str(date)])
-        else:
-            result.append(
-                AveragePrice(
-                    day=str(date),
-                    average_price=None,
-                )
+
+    for price in prices:
+        result.append(
+            AveragePrice(
+                day=str(price[0]),
+                average_price=get_day_average_price(price),
             )
+        )
 
     return result
