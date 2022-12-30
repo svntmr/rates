@@ -1,8 +1,9 @@
+from datetime import datetime
 from inspect import signature
-from typing import Callable, List, Optional, Type, TypeAlias
+from typing import Any, Callable, Dict, List, Optional, Type, TypeAlias
 
 from fastapi import HTTPException
-from pydantic import BaseModel, ValidationError, validator
+from pydantic import BaseModel, ValidationError, root_validator, validator
 from rates.utils.validation import check_date
 
 
@@ -47,6 +48,32 @@ class RatesRequest(BaseModel):
 
     _check_date_from = validator("date_from", allow_reuse=True)(check_date)
     _check_date_to = validator("date_to", allow_reuse=True)(check_date)
+
+    @root_validator(skip_on_failure=True)
+    def check_dates_order(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Validator to check that `date_from` is less than `date_to`
+
+        :param values: dict with pydantic model values (with other validators applied)
+        :type values: Dict[str, Any]
+        :return: model values as dict
+        :rtype: Dict[str, Any]
+        :raises ValueError: if `date_from` is bigger than `date_to`
+        """
+        # note: `skip_on_failure=True` means that root validator won't be called if any
+        # validator fails before it
+        # safe to use straight key access as root validators are executed
+        # at the last step (after other fields validation)
+        date_from = datetime.strptime(values["date_from"], "%Y-%m-%d")
+        date_to = datetime.strptime(values["date_to"], "%Y-%m-%d")
+
+        if date_from > date_to:
+            raise ValueError(
+                f"`date_from` should be before `date_to`, got "
+                f"`date_from`: '{date_from.strftime('%Y-%m-%d')}' "
+                f"and `date_to`: '{date_to.strftime('%Y-%m-%d')}"
+            )
+        return values
 
 
 class AveragePrice(BaseModel):

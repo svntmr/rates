@@ -75,6 +75,30 @@ class TestRatesEndpoint:
             ]
         }
 
+    def test_rates_endpoint_fails_on_request_with_start_date_bigger_than_end_date(self):
+        # given & when
+        response = self.client.get(
+            self.endpoint,
+            params={
+                "date_from": "2016-01-11",  # from bigger than to
+                "date_to": "2016-01-01",
+                "origin": "some_origin",
+                "destination": "some_destination",
+            },
+        )
+        # then
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.json() == {
+            "detail": [
+                {
+                    "loc": ["query", "__root__"],
+                    "msg": "`date_from` should be before `date_to`, got `date_from`: "
+                    "'2016-01-11' and `date_to`: '2016-01-01",
+                    "type": "value_error",
+                }
+            ]
+        }
+
     def test_rates_endpoint_calls_get_average_prices(self):
         # given
         with patch(

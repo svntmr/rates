@@ -107,6 +107,6 @@ Don't forget to update port mapping for `database` service if port 5432 is alrea
 - async driver for database & async queries
 - ~~refactor `get_prices_for_request` (described in function)~~
 - validation improvement
-  - check if dates are in the right order (from > to)
+  - ~~check if dates are in the right order (from > to)~~
   - (maybe) check if dates are in the range of DB dates
   - (maybe) check if origin and destination exists
