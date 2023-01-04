@@ -1,12 +1,12 @@
 from rates.utils.environment import Environment
-from sqlalchemy import create_engine
-from sqlalchemy.engine import URL, Engine
+from sqlalchemy.engine import URL
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 
-def get_engine() -> Engine:
+def get_engine() -> AsyncEngine:
     environment = Environment()
     database_url = URL.create(
-        drivername="postgresql+psycopg2",
+        drivername="postgresql+asyncpg",
         username=environment.db_username,
         password=environment.db_password,
         host=environment.db_host,
@@ -14,4 +14,4 @@ def get_engine() -> Engine:
         database=environment.db_database,
     )
 
-    return create_engine(database_url, future=True)
+    return create_async_engine(database_url, future=True)

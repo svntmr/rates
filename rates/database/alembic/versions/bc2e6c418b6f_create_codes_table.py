@@ -5,13 +5,15 @@ Revises:
 Create Date: 2022-12-25 22:50:38.972153
 
 """
+import asyncio
 from collections import defaultdict
 from typing import List, Mapping, Set
 
+import nest_asyncio
 from alembic import op
 from rates.database.engine import get_engine
 from sqlalchemy import text
-from sqlalchemy.engine import Connection
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 # revision identifiers, used by Alembic.
 revision = "bc2e6c418b6f"
@@ -20,30 +22,27 @@ branch_labels = None
 depends_on = None
 
 
-def get_region_ports(connection: Connection, region: str) -> List[str]:
+async def get_region_ports(connection: AsyncConnection, region: str) -> List[str]:
     """
     Returns ports for the given region
 
     :param connection: sqlalchemy connection
-    :type connection: Connection
+    :type connection: AsyncConnection
     :param region: region slug
     :type region: str
     :return: list of region ports
     :rtype: List[str]
     """
-    region_ports = (
-        connection.execute(
-            text("SELECT code FROM ports WHERE parent_slug = :parent_slug "),
-            {"parent_slug": region},
-        )
-        .scalars()
-        .all()
+    region_ports_query = await connection.execute(
+        text("SELECT code FROM ports WHERE parent_slug = :parent_slug "),
+        {"parent_slug": region},
     )
+    region_ports = region_ports_query.scalars().all()
     return region_ports
 
 
-def build_region_to_port_connection(
-    connection: Connection, regions: List[Mapping[str, str]]
+async def build_region_to_port_connection(
+    connection: AsyncConnection, regions: List[Mapping[str, str]]
 ) -> Mapping[str, Set[str]]:
     """
     Returns connections between region and ports
@@ -51,7 +50,7 @@ def build_region_to_port_connection(
     Algorithm is similar to Breadth First search
 
     :param connection: sqlalchemy connection
-    :type connection: Connection
+    :type connection: AsyncConnection
     :param regions: list of regions with slug and parent slug
     :type regions: List[Mapping[str, str]]
     :return: connections between region and ports
@@ -60,7 +59,7 @@ def build_region_to_port_connection(
     region_to_port: Mapping[str, Set[str]] = defaultdict(set)
     for region in regions:
         # get and store region ports
-        region_ports = get_region_ports(connection, region["slug"])
+        region_ports = await get_region_ports(connection, region["slug"])
         region_to_port[region["slug"]].update(region_ports)
         # check if region has subregions
         if subregions := [
@@ -71,7 +70,7 @@ def build_region_to_port_connection(
             while subregions:
                 subregion = subregions.pop()
                 # get and store subregion ports
-                subregion_ports = get_region_ports(connection, subregion["slug"])
+                subregion_ports = await get_region_ports(connection, subregion["slug"])
                 region_to_port[subregion["slug"]].update(subregion_ports)
                 # append subregion ports into current region
                 region_to_port[region["slug"]].update(subregion_ports)
@@ -85,23 +84,23 @@ def build_region_to_port_connection(
     return region_to_port
 
 
-def get_codes_table_values(connection: Connection) -> List[Mapping[str, str]]:
+async def get_codes_table_values(
+    connection: AsyncConnection,
+) -> List[Mapping[str, str]]:
     """
     Creates values for `codes` table
 
     :param connection: sqlalchemy connection
-    :type connection: Connection
+    :type connection: AsyncConnection
     :return: list of values as mapping with `key` and `code` fields
     :rtype: List[Mapping[str, str]]
     """
-    regions: List[Mapping[str, str]] = [
-        row
-        for row in connection.execute(
-            text("SELECT slug, parent_slug FROM regions")
-        ).mappings()
-    ]
+    regions_query = await connection.execute(
+        text("SELECT slug, parent_slug FROM regions")
+    )
+    regions: List[Mapping[str, str]] = [row for row in regions_query.mappings()]
 
-    region_to_port = build_region_to_port_connection(connection, regions)
+    region_to_port = await build_region_to_port_connection(connection, regions)
 
     insert_values: List[Mapping[str, str]] = []
     unique_ports = set()
@@ -117,22 +116,42 @@ def get_codes_table_values(connection: Connection) -> List[Mapping[str, str]]:
 
 
 def upgrade() -> None:
+    # TODO(maybe): fix once alembic has better support for async I/O
+    # Problem description:
+    # as alembic creates event loop in env.py, the event loop will be already running
+    # here - it's impossible to run tasks and wait for the result (trying to do so
+    # will give the error "RuntimeError: This event loop is already running")
+    # fresh event loop is required to run queries with async engine
+    # Solution description:
+    # nest_asyncio allows to create event loop inside another event loop
+    # to solve this problem
+    # Additional notes:
+    # I don't like this solution, but in my opinion it's better than
+    # having two database drivers
+    nest_asyncio.apply()
+    asyncio.run(create_and_fill_codes_table())
+
+
+async def create_and_fill_codes_table():
     # table stores region slug/port code - port code connection to simplify
     # data querying (allows to handle ports and regions in one way)
     engine = get_engine()
-    with engine.connect() as connection:
+    async with engine.connect() as connection:
         # create table first
         create_table_query = text(
-            "CREATE TABLE codes (key text NOT NULL, code text NOT NULL )"
+            "CREATE TABLE codes ("
+            "   key text NOT NULL, "
+            "   code text NOT NULL, "
+            "   PRIMARY KEY (key, code) "
+            ")"
         )
-        connection.execute(create_table_query)
+        await connection.execute(create_table_query)
 
         # fill it up with data
-        insert_values = get_codes_table_values(connection)
+        insert_values = await get_codes_table_values(connection)
         insert_query = text("INSERT INTO codes (key, code) VALUES (:key, :code)")
-        connection.execute(insert_query, insert_values)
-        # connection actually has this method!
-        connection.commit()  # type: ignore[attr-defined]
+        await connection.execute(insert_query, insert_values)
+        await connection.commit()
 
 
 def downgrade() -> None:

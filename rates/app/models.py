@@ -1,10 +1,9 @@
-from datetime import datetime
+from datetime import date
 from inspect import signature
 from typing import Any, Callable, Dict, List, Optional, Type, TypeAlias
 
 from fastapi import HTTPException
-from pydantic import BaseModel, ValidationError, root_validator, validator
-from rates.utils.validation import check_date
+from pydantic import BaseModel, Field, ValidationError, root_validator
 
 
 def make_dependable(cls: Type) -> Callable:
@@ -41,13 +40,16 @@ def make_dependable(cls: Type) -> Callable:
 
 
 class RatesRequest(BaseModel):
-    date_from: str
-    date_to: str
-    origin: str
-    destination: str
-
-    _check_date_from = validator("date_from", allow_reuse=True)(check_date)
-    _check_date_to = validator("date_to", allow_reuse=True)(check_date)
+    date_from: date = Field(..., description="date period start", example="2016-01-01")
+    date_to: date = Field(..., description="date period end", example="2016-01-10")
+    origin: str = Field(
+        ..., description="region name or port code for origin", example="CNSGH"
+    )
+    destination: str = Field(
+        ...,
+        description="region name or port code for destination",
+        example="north_europe_main",
+    )
 
     @root_validator(skip_on_failure=True)
     def check_dates_order(cls, values: Dict[str, Any]) -> Dict[str, Any]:
@@ -64,8 +66,8 @@ class RatesRequest(BaseModel):
         # validator fails before it
         # safe to use straight key access as root validators are executed
         # at the last step (after other fields validation)
-        date_from = datetime.strptime(values["date_from"], "%Y-%m-%d")
-        date_to = datetime.strptime(values["date_to"], "%Y-%m-%d")
+        date_from = values["date_from"]
+        date_to = values["date_to"]
 
         if date_from > date_to:
             raise ValueError(

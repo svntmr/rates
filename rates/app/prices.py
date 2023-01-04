@@ -5,10 +5,11 @@ from typing import List, Optional, Tuple
 from rates.app.models import AveragePrice, AveragePrices, RatesRequest
 from rates.database.engine import get_engine
 from sqlalchemy import text
-from sqlalchemy.engine import Connection, Row
+from sqlalchemy.engine import Row
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 
-def get_average_prices(request: RatesRequest) -> AveragePrices:
+async def get_average_prices(request: RatesRequest) -> AveragePrices:
     """
     Finds average prices for given origin, destination and date range
 
@@ -18,24 +19,26 @@ def get_average_prices(request: RatesRequest) -> AveragePrices:
     :rtype: AveragePrices
     """
     engine = get_engine()
-    with engine.connect() as connection:
-        prices = get_prices_for_request(connection, request)
+    async with engine.connect() as connection:
+        prices = await get_prices_for_request(connection, request)
 
     return process_prices(prices)
 
 
-def get_prices_for_request(connection: Connection, request: RatesRequest) -> List[Row]:
+async def get_prices_for_request(
+    connection: AsyncConnection, request: RatesRequest
+) -> List[Row]:
     """
     Fetches day, average prices and prices amount for given ports and dates
 
     :param connection: sqlalchemy connection instance
-    :type connection: Connection
+    :type connection: AsyncConnection
     :param request: request with origin, destination and date range
     :type request: RatesRequest
     :return: list of rows with day, average prices and prices amount
     :rtype: List[Row]
     """
-    prices_per_day = connection.execute(
+    prices_per_day_query = await connection.execute(
         text(
             """
             WITH prices_per_day as (
@@ -51,7 +54,7 @@ def get_prices_for_request(connection: Connection, request: RatesRequest) -> Lis
             missing_dates AS (
                 SELECT day, 0 AS avg_price, 0 AS prices_count
                 FROM (
-                    SELECT generate_series(date :date_from, :date_to, '1 day')::date
+                    SELECT generate_series(:date_from ::date, :date_to, '1 day')::date
                     AS day
                 ) date_range
                 WHERE day NOT IN (SELECT day FROM prices_per_day)
@@ -68,7 +71,8 @@ def get_prices_for_request(connection: Connection, request: RatesRequest) -> Lis
             "date_from": request.date_from,
             "date_to": request.date_to,
         },
-    ).all()
+    )
+    prices_per_day = prices_per_day_query.all()
     return prices_per_day
 
 

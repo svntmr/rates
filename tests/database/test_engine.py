@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from rates.database.engine import get_engine
 from sqlalchemy.engine import URL
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 
 class TestGetEngine:
@@ -23,7 +24,7 @@ class TestGetEngine:
 
         # then
         expected_connection_url = URL.create(
-            drivername="postgresql+psycopg2",
+            drivername="postgresql+asyncpg",
             username="username",
             password="password",
             host="host",
@@ -34,3 +35,4 @@ class TestGetEngine:
         assert (
             engine.url == expected_connection_url
         ), "engine should be created with URL that uses environment variables"
+        assert isinstance(engine, AsyncEngine), "asynchronous engine should be created"

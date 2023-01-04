@@ -1,20 +1,23 @@
 import datetime
 from decimal import Decimal
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, patch
 
+import pytest
 from rates.app.models import AveragePrice, RatesRequest
 from rates.app.prices import (
     get_average_prices,
     get_day_average_price,
     process_prices,
 )
+from sqlalchemy.engine import Engine
 
 
 class TestGetAveragePrices:
-    def test_get_average_prices(self):
+    @pytest.mark.asyncio
+    async def test_get_average_prices(self):
         # given
         with patch(
-            "rates.app.prices.get_engine", return_value=MagicMock()
+            "rates.app.prices.get_engine", return_value=AsyncMock(Engine)
         ) as get_engine_patch, patch(
             "rates.app.prices.get_prices_for_request",
             return_value=[
@@ -30,14 +33,14 @@ class TestGetAveragePrices:
             )
 
             # when
-            average_prices = get_average_prices(request)
+            average_prices = await get_average_prices(request)
 
             # then
             # engine should be created
             get_engine_patch.assert_called_once()
             # connection should be created
             get_engine_patch.return_value.connect.assert_called_once()
-            get_prices_for_request_patch.assert_called_once_with(ANY, request)
+            get_prices_for_request_patch.assert_awaited_once_with(ANY, request)
             expected_prices = [
                 AveragePrice(  # day has less than three prices
                     day="2022-07-01", average_price=None

@@ -50,8 +50,8 @@ class TestRatesEndpoint:
         response = self.client.get(
             self.endpoint,
             params={
-                "date_from": "2022-7-1 09:26:03.478039",  # date with minutes
-                "date_to": "2022",  # date without month and day
+                "date_from": "2022-7-1 09:26:03.478039",
+                "date_to": "2022-01-10",
                 "origin": "some_origin",
                 "destination": "some_destination",
             },
@@ -62,16 +62,31 @@ class TestRatesEndpoint:
             "detail": [
                 {
                     "loc": ["query", "date_from"],
-                    "msg": "date should be in `%Y-%m-%d` (2020-10-10) format, got "
-                    "'2022-7-1 09:26:03.478039'",
-                    "type": "value_error",
-                },
+                    "msg": "invalid date format",
+                    "type": "value_error.date",
+                }
+            ]
+        }
+
+        # given & when
+        response = self.client.get(
+            self.endpoint,
+            params={
+                "date_from": "2022-01-10",
+                "date_to": "2022-7-1 09:26:03.478039",
+                "origin": "some_origin",
+                "destination": "some_destination",
+            },
+        )
+        # then
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.json() == {
+            "detail": [
                 {
                     "loc": ["query", "date_to"],
-                    "msg": "date should be in `%Y-%m-%d` (2020-10-10) format, "
-                    "got '2022'",
-                    "type": "value_error",
-                },
+                    "msg": "invalid date format",
+                    "type": "value_error.date",
+                }
             ]
         }
 

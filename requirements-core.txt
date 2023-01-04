@@ -1,7 +1,8 @@
 alembic==1.9.1
-pydantic==1.10.2
+asyncpg==0.27.0
+pydantic==1.10.4
 python-dotenv==0.21.0
-sqlalchemy[mypy]==1.4.45
-psycopg2-binary==2.9.5
+nest-asyncio==1.5.6
+sqlalchemy[asyncio,mypy]==1.4.46
 fastapi==0.88.0
 uvicorn[standard]==0.20.0

@@ -84,6 +84,7 @@ Used as "cache" to simplify queries
 
 #### Database setup
 
+- [create venv and install project dependencies](CONTRIBUTING.md#virtual-environment) (needed for migrations execution)
 - create `.env` file from `.env.example`: `cp .env.example .env`
 - create database container: `make setup-database` (builds and starts database container, executes migrations)
 
@@ -99,13 +100,15 @@ Don't forget to update port mapping for `database` service if port 5432 is alrea
   - setup database: `make setup-database`
   - start uvicorn: `make serve` or `uvicorn rates.main:app --reload`
 - using docker compose:
+  - create `.env` file from `.env.example`: `cp .env.example .env`
   - build images and start containers: `make`
   - stop containers: `make stop`
 
 ### TODO
 
-- async driver for database & async queries
+- ~~async driver for database & async queries~~
 - ~~refactor `get_prices_for_request` (described in function)~~
+- TODO in migrations
 - validation improvement
   - ~~check if dates are in the right order (from > to)~~
   - (maybe) check if dates are in the range of DB dates

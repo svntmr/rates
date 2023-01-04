@@ -37,4 +37,7 @@ build-api:
 up:
 	docker compose up -d
 
-run: build up run-migrations
+wait-for-db-to-start:
+	@sleep 3
+
+run: build up wait-for-db-to-start run-migrations
