@@ -3,7 +3,7 @@ from unittest.mock import patch
 from fastapi import status
 from fastapi.testclient import TestClient
 from rates.app.models import AveragePrice, RatesRequest
-from rates.main import app
+from rates.main import app, engine
 
 
 class TestRatesEndpoint:
@@ -132,13 +132,16 @@ class TestRatesEndpoint:
             )
 
             # then
+            # `get_average_prices` should be called with engine from `main.py` and
+            # provided request
             get_average_prices_patch.assert_called_once_with(
+                engine,
                 RatesRequest(
                     date_from="2022-07-01",
                     date_to="2022-07-02",
                     origin="some_origin",
                     destination="some_destination",
-                )
+                ),
             )
             assert response.status_code == status.HTTP_200_OK
             assert response.json() == [{"day": "2022-07-01", "average_price": 4.2}]

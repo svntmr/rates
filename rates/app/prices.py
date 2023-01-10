@@ -3,22 +3,24 @@ from decimal import Decimal
 from typing import List, Optional, Tuple
 
 from rates.app.models import AveragePrice, AveragePrices, RatesRequest
-from rates.database.engine import get_engine
 from sqlalchemy import text
 from sqlalchemy.engine import Row
-from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 
-async def get_average_prices(request: RatesRequest) -> AveragePrices:
+async def get_average_prices(
+    engine: AsyncEngine, request: RatesRequest
+) -> AveragePrices:
     """
     Finds average prices for given origin, destination and date range
 
+    :param engine: sqlalchemy engine instance
+    :type engine: AsyncEngine
     :param request: request with origin, destination and date range
     :type request: RatesRequest
     :return: list of average prices for each day in date range
     :rtype: AveragePrices
     """
-    engine = get_engine()
     async with engine.connect() as connection:
         prices = await get_prices_for_request(connection, request)
 

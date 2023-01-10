@@ -17,14 +17,14 @@ class TestGetAveragePrices:
     async def test_get_average_prices(self):
         # given
         with patch(
-            "rates.app.prices.get_engine", return_value=AsyncMock(Engine)
-        ) as get_engine_patch, patch(
             "rates.app.prices.get_prices_for_request",
             return_value=[
                 (datetime.date(2022, 7, 1), Decimal(100), 2),
                 (datetime.date(2022, 7, 2), Decimal(200), 4),
             ],
         ) as get_prices_for_request_patch:
+            async_engine_mock = AsyncMock(Engine)
+
             request = RatesRequest(
                 date_from="2022-07-01",
                 date_to="2022-07-02",
@@ -33,13 +33,12 @@ class TestGetAveragePrices:
             )
 
             # when
-            average_prices = await get_average_prices(request)
+            average_prices = await get_average_prices(async_engine_mock, request)
 
             # then
-            # engine should be created
-            get_engine_patch.assert_called_once()
             # connection should be created
-            get_engine_patch.return_value.connect.assert_called_once()
+            async_engine_mock.connect.assert_called_once()
+            # get_prices_for_request should be called with connection and request
             get_prices_for_request_patch.assert_awaited_once_with(ANY, request)
             expected_prices = [
                 AveragePrice(  # day has less than three prices
