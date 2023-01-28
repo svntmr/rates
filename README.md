@@ -111,5 +111,6 @@ Don't forget to update port mapping for `database` service if port 5432 is alrea
 - TODO in migrations
 - validation improvement
   - ~~check if dates are in the right order (from > to)~~
+  - ~~check for non-empty destination and origin~~
   - (maybe) check if dates are in the range of DB dates
   - (maybe) check if origin and destination exists

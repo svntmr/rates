@@ -114,6 +114,36 @@ class TestRatesEndpoint:
             ]
         }
 
+    def test_rates_endpoint_fails_on_request_with_empty_origin_and_destination(self):
+        # given & when
+        response = self.client.get(
+            self.endpoint,
+            params={
+                "date_from": "2016-01-01",
+                "date_to": "2016-01-02",
+                "origin": "",
+                "destination": "    ",
+            },
+        )
+        # then
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.json() == {
+            "detail": [
+                {
+                    "loc": ["query", "origin"],
+                    "msg": "ensure this value has at least 1 characters",
+                    "type": "value_error.any_str.min_length",
+                    "ctx": {"limit_value": 1},
+                },
+                {
+                    "loc": ["query", "destination"],
+                    "msg": "ensure this value has at least 1 characters",
+                    "type": "value_error.any_str.min_length",
+                    "ctx": {"limit_value": 1},
+                },
+            ]
+        }
+
     def test_rates_endpoint_calls_get_average_prices(self):
         # given
         with patch(

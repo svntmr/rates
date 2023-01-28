@@ -3,7 +3,13 @@ from inspect import signature
 from typing import Any, Callable, Dict, List, Optional, Type, TypeAlias
 
 from fastapi import HTTPException
-from pydantic import BaseModel, Field, ValidationError, root_validator
+from pydantic import (
+    BaseModel,
+    ConstrainedStr,
+    Field,
+    ValidationError,
+    root_validator,
+)
 
 
 def make_dependable(cls: Type) -> Callable:
@@ -39,13 +45,18 @@ def make_dependable(cls: Type) -> Callable:
     return init_cls_and_handle_errors
 
 
+class PortOrRegion(ConstrainedStr):
+    strip_whitespace: bool = True
+    min_length: int = 1
+
+
 class RatesRequest(BaseModel):
     date_from: date = Field(..., description="date period start", example="2016-01-01")
     date_to: date = Field(..., description="date period end", example="2016-01-10")
-    origin: str = Field(
+    origin: PortOrRegion = Field(
         ..., description="region name or port code for origin", example="CNSGH"
     )
-    destination: str = Field(
+    destination: PortOrRegion = Field(
         ...,
         description="region name or port code for destination",
         example="north_europe_main",
