@@ -7,7 +7,7 @@ Create Date: 2022-12-25 22:50:38.972153
 """
 import asyncio
 from collections import defaultdict
-from typing import List, Mapping, Set
+from typing import List, Mapping, Sequence, Set
 
 import nest_asyncio
 from alembic import op
@@ -22,7 +22,7 @@ branch_labels = None
 depends_on = None
 
 
-async def get_region_ports(connection: AsyncConnection, region: str) -> List[str]:
+async def get_region_ports(connection: AsyncConnection, region: str) -> Sequence[str]:
     """
     Returns ports for the given region
 
@@ -31,13 +31,13 @@ async def get_region_ports(connection: AsyncConnection, region: str) -> List[str
     :param region: region slug
     :type region: str
     :return: list of region ports
-    :rtype: List[str]
+    :rtype: Sequence[str]
     """
     region_ports_query = await connection.execute(
         text("SELECT code FROM ports WHERE parent_slug = :parent_slug "),
         {"parent_slug": region},
     )
-    region_ports = region_ports_query.scalars().all()
+    region_ports: Sequence[str] = region_ports_query.scalars().all()
     return region_ports
 
 

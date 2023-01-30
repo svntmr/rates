@@ -1,8 +1,8 @@
-alembic==1.9.1
+alembic==1.9.2
 asyncpg==0.27.0
 pydantic==1.10.4
-python-dotenv==0.21.0
+python-dotenv==0.21.1
 nest-asyncio==1.5.6
-sqlalchemy[asyncio,mypy]==1.4.46
-fastapi==0.88.0
+sqlalchemy[asyncio,mypy]==2.0.0
+fastapi==0.89.1
 uvicorn[standard]==0.20.0

@@ -1,6 +1,6 @@
 import datetime
 from decimal import Decimal
-from typing import List, Optional, Tuple
+from typing import Optional, Sequence, Tuple
 
 from rates.app.models import AveragePrice, AveragePrices, RatesRequest
 from sqlalchemy import text
@@ -29,7 +29,7 @@ async def get_average_prices(
 
 async def get_prices_for_request(
     connection: AsyncConnection, request: RatesRequest
-) -> List[Row]:
+) -> Sequence[Row]:
     """
     Fetches day, average prices and prices amount for given ports and dates
 
@@ -37,8 +37,8 @@ async def get_prices_for_request(
     :type connection: AsyncConnection
     :param request: request with origin, destination and date range
     :type request: RatesRequest
-    :return: list of rows with day, average prices and prices amount
-    :rtype: List[Row]
+    :return: sequence of rows with day, average prices and prices amount
+    :rtype: Sequence[Row]
     """
     prices_per_day_query = await connection.execute(
         text(
@@ -102,14 +102,14 @@ def get_day_average_price(
 
 
 def process_prices(
-    prices: List[Row] | List[Tuple[datetime.date, Decimal, int]],
+    prices: Sequence[Row] | Sequence[Tuple[datetime.date, Decimal, int]],
 ) -> AveragePrices:
     """
     Processes prices and returns list of average prices for each day in
     given time period
 
-    :param prices: list of prices for given time period
-    :type prices: List[Row] | List[Tuple[datetime.date, Decimal, int]]
+    :param prices: sequence of prices for given time period
+    :type prices: Sequence[Row] | Sequence[Tuple[datetime.date, Decimal, int]]
     :return: list of average prices for each day in given time period
     :rtype: AveragePrices
     """
